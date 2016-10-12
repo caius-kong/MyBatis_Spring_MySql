@@ -11,6 +11,6 @@
     <title>Title</title>
 </head>
 <body>
-发生错误了,我们来到了异星球!
+发生错误了,我们来到了异星球!快吐槽吧~
 </body>
 </html>
