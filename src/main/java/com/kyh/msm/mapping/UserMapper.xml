@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.kyh.msm.dao.UserMapper">
+    <!-- 整合ehcache: 导包  ->  配置<cache/>  ->  ehcache.xml(可选) -->
+
+    <!-- 以下两个<cache>标签二选一,第一个可以输出日志,第二个不输出日志-->
+    <cache type="org.mybatis.caches.ehcache.LoggingEhcache"/>
+    <!--<cache type="org.mybatis.caches.ehcache.EhcacheCache"/>-->
+
+    <resultMap id="BaseResultMap" type="User">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="sex" property="sex" jdbcType="VARCHAR"/>
+        <result column="birthday" property="birthday" jdbcType="VARCHAR"/>
+        <result column="picUrl" property="picUrl" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <!-- 注意区分这2种映射写法: Email中关联user(一方),使用association
+                             User中关联emails(多方),使用collection
+    -->
+    <!-- 一对一、多对一映射 (id重名,必须重命名!!!) -->
+    <resultMap id="EmailUserResultMap" type="Email">
+        <id property="id" column="emailId"/>
+        <result property="emailName" column="emailName"/>
+        <association property="user" javaType="User" resultMap="BaseResultMap"/>
+    </resultMap>
+
+    <!-- 一对多、多对多映射 -->
+    <resultMap id="UserEmailResultMap" type="User" extends="BaseResultMap">
+        <collection property="emails" ofType="Email">
+            <id property="id" column="emailId"/>
+            <result property="emailName" column="emailName"/>
+        </collection>
+    </resultMap>
+
+    <!-- 延迟加载(1.mybatis-config.xml; 2.添加select、column) -->
+    <resultMap id="EmailUserLazyLoadResultMap" type="Email">
+        <id property="id" column="emailId"/>
+        <result property="emailName" column="emailName"/>
+        <!-- 执行查询只会返回email数据,当执行email.getUser()时,延迟加载被触发
+             select: 指定延迟加载需要执行的statement的id
+             column: tbl_email中关联tbl_user的字段
+        -->
+        <association property="user" javaType="User" select="selectByPrimaryKey" column="user_id"/>
+    </resultMap>
+
+    <!-- 定义sql片段,方便重用 -->
+    <sql id="Base_Column_List">
+        id, name, sex, birthday, picUrl
+    </sql>
+
+    <!-- #{}表示一个占位符号(建议写成value)
+        parameterType:指定输入参数类型
+        resultType:指定输出结果类型(pojo)
+        resultMap:代替resultType,完成自定义映射。
+     -->
+    <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultType="User">
+        select
+        <include refid="Base_Column_List"/>
+        from tbl_user where id = #{value}
+    </select>
+
+    <!-- ${}表示一个拼接符号，会引起sql注入，所以不建议使用
+         接收简单类型:${value}
+         接受pojo属性:${user.name}
+
+         ps.不管输出的pojo对象是一个还是列表,resultType都是一样的,区别在于UserMapper.java中返回值不一样:User/List<User>
+     -->
+    <select id="selectByName" parameterType="java.lang.String" resultType="User">
+        select * from tbl_user where name like '%${value}%';
+    </select>
+
+    <select id="selectAll" resultType="User">
+        select * from tbl_user;
+    </select>
+
+    <!-- 综合查询案例 (相较于设置ResultMap,创建临时pojo更加快捷!) -->
+    <!-- "左外连接"和下面的"内连接"查询的结果数不一样,
+         left join会保留左侧table无对应连接的记录。
+         理论上:性能低于inner join
+    -->
+    <select id="selectUserInfo" parameterType="com.kyh.msm.vo.UserQueryVo" resultType="com.kyh.msm.vo.UserInfoCustom">
+        select u.id, u.name, u.sex, u.birthday, e.id emailId, e.emailName from tbl_user u
+        left join tbl_email e on u.id=e.user_id
+        <!--  where 可以自动去掉条件中的第一个and, 而且如果没有if成立,则忽略where -->
+        <where>
+            <if test="userInfoCustom!=null">
+                <if test="userInfoCustom.id!=null and userInfoCustom.id!=''">
+                    and u.id=#{userInfoCustom.id}
+                </if>
+                <if test="userInfoCustom.emailName!=null and userInfoCustom.emailName!=''">
+                    and e.emailName=#{userInfoCustom.emailName}
+                </if>
+            </if>
+        </where>
+    </select>
+
+    <!-- 综合查询案例(使用resultMap,连表查询通过pojo映射关系 ==> 即需要扩展原始pojo以及resultMap规定映射关系和显示字段) -->
+    <!--
+         resultType: 将sql字段与pojo一一对应,结果是一条条的记录,无特殊映射关系。
+         resultMap:  不仅获得结果数据,而且结果含有特殊的映射关系 (如pojo对象关联pojo属性)。
+     -->
+    <select id="selectUserInfo2" resultMap="EmailUserResultMap">
+        select
+        e.id as emailId,  <!-- id重名,必须重命名!! -->
+        e.emailName,
+        u.*
+        from tbl_email e,tbl_user u
+        where e.user_id=u.id;
+    </select>
+    <select id="selectUserInfo3" resultMap="UserEmailResultMap">
+        select
+        u.*,
+        e.id as emailId,
+        e.emailName
+        from tbl_email e,tbl_user u
+        where e.user_id=u.id;
+    </select>
+
+    <!-- 简单查询,附加外键"延迟加载"功能 -->
+    <select id="selectEmailInfo" resultMap="EmailUserLazyLoadResultMap">
+        select * from tbl_email;
+    </select>
+
+    <!-- 向sql传递数组或List，mybatis使用foreach解析 -->
+    <select id="selectByIds" parameterType="com.kyh.msm.vo.UserQueryVo" resultType="User">
+        select * from tbl_user
+        <where>
+            <if test="ids!=null">
+                <foreach collection="ids" item="user_id" open="id in (" close=")" separator=",">
+                    #{user_id}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
+        delete from tbl_user where id = #{id}
+    </delete>
+
+    <insert id="insert" parameterType="User">
+        <!--
+        将插入数据的主键返回，返回到user对象中 (可以省略)
+
+        SELECT LAST_INSERT_ID()：得到刚insert进去记录的主键值，只适用于"自增主键"!!!
+        keyProperty：将查询到主键值设置到parameterType指定的对象的哪个属性
+        order：SELECT LAST_INSERT_ID()执行顺序，相对于insert语句来说它的执行顺序
+        resultType：指定SELECT LAST_INSERT_ID()的结果类型
+         -->
+        <selectKey keyProperty="id" order="AFTER" resultType="java.lang.Integer">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+        insert into tbl_user(id, name, sex, birthday, picUrl) values(#{id}, #{name}, #{sex}, #{birthday},#{picUrl})
+    </insert>
+
+    <insert id="insertSelective" parameterType="User">
+        insert into tbl_user
+        <!-- 指定前缀,后缀,且忽略最后一个"," -->
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">
+                id,
+            </if>
+            <if test="name != null">
+                name,
+            </if>
+            <if test="sex != null">
+                sex,
+            </if>
+            <if test="birthday != null">
+                birthday,
+            </if>
+            <if test="picUrl != null">
+                picUrl,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">
+                #{id},
+            </if>
+            <if test="name != null">
+                #{name},
+            </if>
+            <if test="sex != null">
+                #{sex},
+            </if>
+            <if test="birthday != null">
+                #{birthday},
+            </if>
+            <if test="picUrl != null">
+                #{picUrl},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 如果mysql_birthday是Date、DateTime类型, java_birthday是Date类型,则需要设置birthday类型:
+         #{birthday,jdbcType=TIMESTAMP}
+     -->
+    <update id="updateByPrimaryKey" parameterType="User">
+        update tbl_user set name = #{name}, sex = #{sex}, birthday = #{birthday}, picUrl = #{picUrl}
+        where id = #{id}
+    </update>
+
+    <update id="updateByPrimaryKeySelective" parameterType="User">
+        update tbl_user
+        <set>
+            <if test="name != null">
+                name = #{name},
+            </if>
+            <if test="sex != null">
+                sex = #{sex},
+            </if>
+            <if test="birthday != null">
+                birthday = #{birthday},
+            </if>
+            <if test="picUrl != null">
+                picUrl = #{picUrl},
+            </if>
+        </set>
+        where id = #{id}
+    </update>
+</mapper>

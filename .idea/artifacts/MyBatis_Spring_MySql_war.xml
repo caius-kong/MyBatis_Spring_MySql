@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="war" name="MyBatis_Spring_MySql:war">
+    <output-path>$PROJECT_DIR$/target</output-path>
+    <root id="archive" name="kyh_mybatis.war">
+      <element id="artifact" artifact-name="MyBatis_Spring_MySql:war exploded" />
+    </root>
+  </artifact>
+</component>

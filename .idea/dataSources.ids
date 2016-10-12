@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="dataSourceStorage">
+  <data-source name="mydb - mydb@localhost" uuid="04187976-0b42-423f-8679-41e1631e40e3">
+    <database-info product="MySQL" version="5.7.14" jdbc-version="3.0" driver-name="MySQL-AB JDBC Driver" driver-version="mysql-connector-java-3.1.11 ( $Date: 2005-09-21 18:20:03 +0000 (Wed, 21 Sep 2005) $, $Revision: 4287 $ )">
+      <extra-name-characters>#@</extra-name-characters>
+      <identifier-quote-string>`</identifier-quote-string>
+    </database-info>
+    <case-sensitivity plain-identifiers="lower" quoted-identifiers="lower"/>
+    <database-model serializer="dbm" rdbms="MYSQL" format-version="2.6">
+      <schema id="1" name="mydb">
+        <visible>1</visible>
+      </schema>
+      <schema id="2" name="information_schema"/>
+      <schema id="3" name="mysql"/>
+      <schema id="4" name="performance_schema"/>
+      <schema id="5" name="sys"/>
+      <table id="6" parent="1" name="tbl_user"/>
+      <column id="7" parent="6" name="id">
+        <mandatory>1</mandatory>
+        <data-type>int(11) unsigned|0</data-type>
+        <sequence-identity>1</sequence-identity>
+      </column>
+      <column id="8" parent="6" name="name">
+        <mandatory>1</mandatory>
+        <data-type>varchar(20)|0</data-type>
+        <default-expression>&apos;&apos;</default-expression>
+      </column>
+      <column id="9" parent="6" name="sex">
+        <data-type>varchar(2)|0</data-type>
+      </column>
+      <column id="10" parent="6" name="birthday">
+        <data-type>varchar(10)|0</data-type>
+      </column>
+      <key id="11" parent="6" name="PRIMARY">
+        <columns>id</columns>
+        <primary>1</primary>
+      </key>
+    </database-model>
+  </data-source>
+</component>
